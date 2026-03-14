@@ -1,11 +1,6 @@
-import { useState } from "react";
-
-// ── workflows ────────────────────────────────────────────────────
-// useAgent: true  → uses web_search tool + agentic loop
-// useAgent: false → single Claude call (no search)
+import { useState, useRef } from "react";
 
 const workflows = [
-  // ── DEAL SOURCING ────────────────────────────────────────────
   {
     id: "competitor-intel",
     category: "Deal Sourcing",
@@ -76,12 +71,13 @@ RESEARCH BRIEF:
     id: "cim-summary",
     category: "Deal Sourcing",
     title: "CIM Summary",
-    description: "Extract key metrics and roll-up fit from a CIM for a $1M–$50M revenue target",
+    description: "Upload a CIM PDF or Excel file — Claude extracts key metrics and roll-up fit automatically",
     icon: "📄",
     estimatedTime: "2–3 min",
     useAgent: false,
+    useFileUpload: true,
     steps: [
-      { label: "Input", instruction: "Paste CIM text or key sections" },
+      { label: "Upload", instruction: "Upload CIM as PDF or Excel file" },
       { label: "Processing", instruction: "Claude extracts financials, roll-up fit, risks & thesis" },
       { label: "Output", instruction: "Structured 1-page summary ready for IC memo" },
     ],
@@ -107,10 +103,9 @@ RESEARCH BRIEF:
 
 Flag missing data with [DATA NEEDED]. Note: platform vs. add-on candidate.
 
-CIM TEXT:
-{{INPUT}}`,
-    inputLabel: "Paste CIM text here",
-    inputPlaceholder: "Paste sections from the CIM — financials, business overview, market section, management bios...",
+Please analyse the uploaded CIM document above and produce the full structured summary.`,
+    inputLabel: "Upload CIM file",
+    inputPlaceholder: "",
   },
   {
     id: "platform-screen",
@@ -214,8 +209,6 @@ SECTOR & GEOGRAPHY:
     inputLabel: "Enter sector and geography",
     inputPlaceholder: "Sector: Commercial pest control services\nGeographies: Southeast US (TX, FL, GA, NC)\nTarget company size: $1M–$15M revenue\nQuestion: How fragmented is this market and how big could a roll-up platform get?",
   },
-
-  // ── DEAL EXECUTION ───────────────────────────────────────────
   {
     id: "loi-draft",
     category: "Deal Execution",
@@ -238,12 +231,12 @@ SECTOR & GEOGRAPHY:
    - Seller note (typical: 10–20% of EV, 3–5 year term)
    - Earnout provisions (tied to EBITDA or revenue targets)
    - Management rollover equity if applicable
-3. **Transaction Structure** – Asset vs. stock purchase (note: buyers typically prefer asset for tax step-up)
+3. **Transaction Structure** – Asset vs. stock purchase
 4. **Working Capital** – Peg, target, normalisation methodology
 5. **Key Conditions** – Financing, DD period (60–90 days), key employee retention, seller non-compete
 6. **Non-Compete / Non-Solicit** – Seller: 3–5 years, specify geography and scope
 7. **Exclusivity** – 30–45 days
-8. **Transition Assistance** – Seller consulting period (3–12 months, typical for owner-operated)
+8. **Transition Assistance** – Seller consulting period (3–12 months)
 9. **Confidentiality** – Reference NDA or include clause
 10. **Binding vs. Non-Binding** – Clearly distinguish
 11. **Timeline & Next Steps**
@@ -256,8 +249,6 @@ DEAL PARAMETERS:
     inputLabel: "Enter deal parameters",
     inputPlaceholder: "Company: Smith Plumbing LLC\nEV: $4.2M (~4.5x EBITDA)\nCash at close: $3.2M\nSeller note: $600K at 6%, 4 years\nEarnout: $400K if Year 1 EBITDA >$950K\nStructure: Asset purchase\nNon-compete: 4 years, 50-mile radius\nTransition: 6-month consulting agreement\nExclusivity: 45 days",
   },
-
-  // ── DUE DILIGENCE ────────────────────────────────────────────
   {
     id: "dd-checklist",
     category: "Due Diligence",
@@ -293,15 +284,15 @@ DEAL PARAMETERS:
    - Equipment condition, capex requirements, supplier concentration
 
 4. **Commercial Due Diligence**
-   - [CRITICAL] Customer concentration and relationship mapping (owner vs. company)
+   - [CRITICAL] Customer concentration and relationship mapping
    - Contract terms, renewal rates, churn, pricing history, pipeline/backlog
 
 5. **HR & Compensation**
    - [CRITICAL] Employee flight risk post-close
-   - Compensation benchmarking (often underpaid at small businesses)
+   - Compensation benchmarking
    - Informal arrangements, non-competes, benefits/PTO liabilities
 
-6. **Integration Readiness** (roll-up context)
+6. **Integration Readiness**
    - Systems compatibility with platform
    - Culture fit, integration timeline and cost estimate
    - Quick wins available in first 90 days
@@ -330,17 +321,13 @@ Structure a reference check guide:
 
 **Opening** – How to introduce the call and frame for honest responses (2 min)
 
-**Section 1: Relationship & Context** (5 questions) — How they know the person, capacity, duration
+**Section 1: Relationship & Context** (5 questions)
+**Section 2: Leadership & Management Style** (5 questions)
+**Section 3: Business & Operational Performance** (5 questions)
+**Section 4: Integrity & Character** (4 questions)
+**Section 5: Roll-Up / Integration Specific** (4 questions)
 
-**Section 2: Leadership & Management Style** (5 questions) — Team building, decision-making, handling adversity
-
-**Section 3: Business & Operational Performance** (5 questions) — What they built, what improved, how they handle financial pressure
-
-**Section 4: Integrity & Character** (4 questions) — Ethics, transparency, conflict handling
-
-**Section 5: Roll-Up / Integration Specific** (4 questions) — Working within larger orgs, openness to change, ego/ownership mentality
-
-**Section 6: The Key Questions** (always ask)
+**Section 6: The Key Questions**
 - "Would you go into business with this person again?"
 - "Is there anything about them I should know that I haven't asked?"
 - "What's their biggest weakness relevant to this role?"
@@ -354,8 +341,6 @@ PERSON/ROLE DETAILS:
     inputLabel: "Describe the person and context",
     inputPlaceholder: "Role: Owner/operator staying on as GM post-close for 18 months\nCompany: $8M HVAC services\nConcerns: Very owner-centric, all customer relationships are personal, no formal team\nReferences: 2 former employees, 1 major customer, 1 supplier",
   },
-
-  // ── INVESTMENT COMMITTEE ─────────────────────────────────────
   {
     id: "ic-memo",
     category: "Investment Committee",
@@ -371,16 +356,16 @@ PERSON/ROLE DETAILS:
     ],
     prompt: `You are a VP at a PE firm preparing an IC memo for a roll-up acquisition of a small business ($1M–$50M revenue). Write in concise, data-backed PE style.
 
-1. **Executive Summary** — Recommendation, deal type (platform/add-on), 3-bullet thesis, entry valuation and returns (MoM/IRR)
+1. **Executive Summary** — Recommendation, deal type (platform/add-on), 3-bullet thesis, entry valuation and returns
 2. **Company Overview** — Business, history, geography, products/services
-3. **Roll-Up Thesis** — Why this sector, fragmentation opportunity, this company's role, expected # and size of future add-ons
-4. **Financial Performance** — Revenue and EBITDA (3yr + LTM), SDE bridge, owner add-backs, normalised EBITDA
-5. **Financial Projections & Value Creation** — Organic growth + add-on assumptions, combined platform EBITDA trajectory
-6. **Valuation & Returns** — Entry (EV, multiple, equity invested), exit (projected EV, multiple, proceeds), MoM / IRR, Base / Upside / Downside sensitivity
-7. **Due Diligence Summary** — Key findings by workstream, resolved vs. open items
-8. **Key Risks & Mitigants** — Table: Risk | Likelihood | Impact | Mitigation (include owner dependency, customer concentration, integration risk, debt service)
-9. **Transaction Structure** — Sources & uses, debt structure (SBA 7(a) / seller note), earnout, non-compete
-10. **Integration & 100-Day Plan** — Day 1 priorities, systems integration, key hires, retention plan
+3. **Roll-Up Thesis** — Why this sector, fragmentation opportunity, this company's role
+4. **Financial Performance** — Revenue and EBITDA (3yr + LTM), SDE bridge, owner add-backs
+5. **Financial Projections & Value Creation** — Organic growth + add-on assumptions
+6. **Valuation & Returns** — Entry, exit, MoM / IRR, Base / Upside / Downside sensitivity
+7. **Due Diligence Summary** — Key findings by workstream
+8. **Key Risks & Mitigants** — Table: Risk | Likelihood | Impact | Mitigation
+9. **Transaction Structure** — Sources & uses, debt structure, earnout, non-compete
+10. **Integration & 100-Day Plan** — Day 1 priorities, systems integration, key hires
 11. **Recommendation** — Buy / Pass / Re-price with rationale
 
 DEAL INFORMATION:
@@ -388,8 +373,6 @@ DEAL INFORMATION:
     inputLabel: "Paste deal notes & financial data",
     inputPlaceholder: "Paste deal notes, model outputs, DD findings, management meeting notes...",
   },
-
-  // ── PORTFOLIO MANAGEMENT ─────────────────────────────────────
   {
     id: "portfolio-update",
     category: "Portfolio Management",
@@ -403,20 +386,18 @@ DEAL INFORMATION:
       { label: "Processing", instruction: "Claude structures update with variance analysis and integration callouts" },
       { label: "Output", instruction: "Board update: actuals vs. budget, KPIs, integration status, risks" },
     ],
-    prompt: `You are a PE portfolio management associate preparing a board-ready update for a roll-up platform company ($1M–$50M revenue, fragmented industry). Transform the raw data into a structured update:
+    prompt: `You are a PE portfolio management associate preparing a board-ready update for a roll-up platform company. Transform the raw data into a structured update:
 
 1. **Headline Summary** — 3 bullets: on track 🟢, behind 🔴, one key risk 🟡
-2. **Financial Performance** — Revenue and EBITDA: Actual vs. Budget vs. Prior Period (% variance) 🟢🟡🔴, cash position, covenant headroom, earnout tracking
-3. **Roll-Up / M&A Pipeline** — Add-ons in diligence, LOIs outstanding, new targets, recently closed add-ons + integration status
-4. **Integration Scorecard** (recent add-ons) — Systems %, team retention, cross-sell/synergy capture, post-close surprises
+2. **Financial Performance** — Revenue and EBITDA: Actual vs. Budget vs. Prior Period 🟢🟡🔴
+3. **Roll-Up / M&A Pipeline** — Add-ons in diligence, LOIs outstanding, recently closed
+4. **Integration Scorecard** — Systems %, team retention, synergy capture
 5. **Operating KPIs** — Key metrics (flag gaps with [DATA NEEDED])
 6. **Commercial Update** — Pipeline, wins, churn, pricing
-7. **Operational Update** — Headcount, key hires/departures, initiatives
+7. **Operational Update** — Headcount, key hires/departures
 8. **Issues & Risks** — Table: Issue | Owner | Status | Target Resolution
-9. **Actions Required from Board** — Decisions needed
+9. **Actions Required from Board**
 10. **Outlook** — Updated guidance
-
-Use 🟢 on track, 🟡 at risk, 🔴 behind plan throughout.
 
 RAW DATA / NOTES:
 {{INPUT}}`,
@@ -436,7 +417,7 @@ RAW DATA / NOTES:
       { label: "Processing", instruction: "Claude calculates headroom and flags breaches / near-misses" },
       { label: "Output", instruction: "RAG compliance table, headroom calcs, recommended actions" },
     ],
-    prompt: `You are a PE portfolio monitoring analyst tracking debt covenant compliance for a roll-up platform ($1M–$50M revenue, typically SBA loans or senior credit facilities).
+    prompt: `You are a PE portfolio monitoring analyst tracking debt covenant compliance for a roll-up platform.
 
 Produce a covenant compliance report:
 
@@ -444,29 +425,27 @@ Produce a covenant compliance report:
    | Covenant | Requirement | Actual | Headroom | Status | Trend |
    Status: 🟢 COMPLIANT | 🟡 WATCH (within 15% of limit) | 🔴 BREACH / NEAR BREACH
 
-2. **Covenants to Check** (use what's provided, flag missing):
-   - Total Leverage Ratio (Debt/EBITDA) — typical limit ≤4.0x–5.0x
-   - DSCR (EBITDA/Debt Service) — typical minimum ≥1.20x–1.25x
-   - Fixed Charge Coverage — typical minimum ≥1.10x
+2. **Covenants to Check:**
+   - Total Leverage Ratio (Debt/EBITDA)
+   - DSCR (EBITDA/Debt Service)
+   - Fixed Charge Coverage
    - Minimum Liquidity / Cash
    - Maximum Capex
-   - Acquisition approval thresholds (common in roll-up credit agreements)
+   - Acquisition approval thresholds
 
-3. **Breach / Near-Breach Analysis** — For any 🔴/🟡: what drove it, likelihood of cure, remediation options (equity cure, amendment, waiver), timeline
+3. **Breach / Near-Breach Analysis** — What drove it, remediation options, timeline
 
-4. **Recommended Actions** — Lender communications needed, amendment conversations to initiate proactively, internal actions
+4. **Recommended Actions** — Lender communications, amendment conversations
 
 5. **Next Test Date & Key Deadlines**
 
-6. **Notes for CFO / Board** — Items requiring attention
+6. **Notes for CFO / Board**
 
 COVENANT TERMS & FINANCIAL DATA:
 {{INPUT}}`,
     inputLabel: "Paste covenant terms and financials",
-    inputPlaceholder: "Credit facility: $12M senior term loan\nCovenants:\n- Max leverage: 4.5x Total Debt/EBITDA\n- Min DSCR: 1.25x\n- Min cash: $500K\n\nCurrent financials (LTM):\n- EBITDA: $2.1M (down from $2.6M budget)\n- Total debt: $9.8M\n- Annual debt service: $1.7M\n- Cash: $620K\nNext test: March 31",
+    inputPlaceholder: "Credit facility: $12M senior term loan\nCovenants:\n- Max leverage: 4.5x Total Debt/EBITDA\n- Min DSCR: 1.25x\n- Min cash: $500K\n\nCurrent financials (LTM):\n- EBITDA: $2.1M\n- Total debt: $9.8M\n- Annual debt service: $1.7M\n- Cash: $620K\nNext test: March 31",
   },
-
-  // ── LP RELATIONS ─────────────────────────────────────────────
   {
     id: "lp-update",
     category: "LP Relations",
@@ -480,27 +459,23 @@ COVENANT TERMS & FINANCIAL DATA:
       { label: "Processing", instruction: "Claude drafts a professional quarterly LP letter" },
       { label: "Output", instruction: "LP letter — verify all numbers before sending" },
     ],
-    prompt: `You are a Partner at a PE firm specialising in roll-up acquisitions of small businesses ($1M–$50M revenue). Draft a quarterly LP update letter. Be professional, transparent, and address issues head-on — LPs want honest reporting.
+    prompt: `You are a Partner at a PE firm specialising in roll-up acquisitions. Draft a quarterly LP update letter. Be professional, transparent, and address issues head-on.
 
-**[Quarter] [Year] — Limited Partner Update**
-
-1. **Opening from Managing Partner** (2–3 paragraphs) — Quarter in brief, roll-up progress, honest assessment vs. plan
-2. **Fund Performance Summary** — Deployed capital, # platforms / add-ons, Gross MOIC and IRR (unrealised, note estimates), any realisations
-3. **Portfolio Company Highlights** (3–5 bullets each) — Revenue/EBITDA vs. budget, key wins, integration/add-on status, challenges
+1. **Opening from Managing Partner** — Quarter in brief, roll-up progress, honest assessment vs. plan
+2. **Fund Performance Summary** — Deployed capital, # platforms / add-ons, Gross MOIC and IRR
+3. **Portfolio Company Highlights** — Revenue/EBITDA vs. budget, key wins, integration status, challenges
 4. **M&A Activity** — Add-ons closed, LOIs outstanding, pipeline, sector valuation trends
-5. **Value Creation Initiatives** — Cross-portfolio initiatives, shared services, key management hires, platform synergies
-6. **Market Commentary** — Small business M&A conditions, financing environment (SBA/credit availability), macro headwinds
-7. **Outlook for Next Quarter** — Expected deal activity, key milestones, any LP decisions needed
-8. **Capital Account / Admin Notes** — Capital calls anticipated, next investor call / annual meeting
-9. **Closing** — Professional sign-off
+5. **Value Creation Initiatives** — Cross-portfolio initiatives, shared services, key hires
+6. **Market Commentary** — Small business M&A conditions, financing environment, macro headwinds
+7. **Outlook for Next Quarter** — Expected deal activity, key milestones
+8. **Capital Account / Admin Notes**
+9. **Closing**
 
 FUND & PORTFOLIO DATA:
 {{INPUT}}`,
     inputLabel: "Enter fund metrics and portfolio data",
-    inputPlaceholder: "Fund: $45M Fund II, vintage 2023\nDeployed: $28M across 2 platforms + 4 add-ons\nPlatform 1: HVAC services, $18M revenue, $3.1M EBITDA, 3 add-ons integrated\nPlatform 2: Landscaping, $9M revenue, $1.4M EBITDA, 1 add-on closed Q4\nGross MOIC: 1.4x (unrealised)\nChallenges: Platform 2 had a tough Q4, EBITDA -12% vs budget due to weather...",
+    inputPlaceholder: "Fund: $45M Fund II, vintage 2023\nDeployed: $28M across 2 platforms + 4 add-ons\nPlatform 1: HVAC services, $18M revenue, $3.1M EBITDA\nPlatform 2: Landscaping, $9M revenue, $1.4M EBITDA\nGross MOIC: 1.4x (unrealised)...",
   },
-
-  // ── EXIT ─────────────────────────────────────────────────────
   {
     id: "exit-memo",
     category: "Exit & Realisation",
@@ -514,17 +489,17 @@ FUND & PORTFOLIO DATA:
       { label: "Processing", instruction: "Claude drafts a full exit memo for IC records and LP reporting" },
       { label: "Output", instruction: "Exit memo with returns attribution and lessons learned" },
     ],
-    prompt: `You are a senior PE professional drafting an exit memo for LP reporting on a completed roll-up investment ($1M–$50M platform + add-ons).
+    prompt: `You are a senior PE professional drafting an exit memo for LP reporting on a completed roll-up investment.
 
-1. **Transaction Overview** — Platform name, entry/exit dates, hold period, exit type, buyer, # add-ons completed
-2. **Investment Thesis at Entry** — Original roll-up thesis, sector rationale, target # and size of add-ons
-3. **The Roll-Up Story** — Platform at entry (revenue, EBITDA, geography, headcount) → add-ons list (name, date, size, price) → platform at exit
-4. **Financial Returns** — Entry (equity invested, blended multiple) / Exit (EV, proceeds, multiple) / Returns (Gross MoM, IRR, Net MoM, IRR) / Attribution (organic EBITDA, add-on EBITDA, multiple expansion, leverage paydown, synergies)
+1. **Transaction Overview** — Platform name, entry/exit dates, hold period, exit type, buyer, # add-ons
+2. **Investment Thesis at Entry** — Original roll-up thesis, sector rationale
+3. **The Roll-Up Story** — Platform at entry → add-ons list → platform at exit
+4. **Financial Returns** — Entry / Exit / Returns (Gross MoM, IRR, Net MoM, IRR) / Attribution
 5. **Thesis Scorecard** — Each original thesis point: ✅ Achieved / ⚠️ Partial / ❌ Did Not Materialise
 6. **What Worked** — Top 5 value creation drivers
-7. **What We'd Do Differently** — Honest lessons (integration pacing, DD, management hiring, add-on criteria)
+7. **What We'd Do Differently** — Honest lessons
 8. **Key People** — Deal team, operating partners, management
-9. **LP Communication Points** — 3–5 key messages for LP announcement
+9. **LP Communication Points** — 3–5 key messages
 
 DEAL INFORMATION:
 {{INPUT}}`,
@@ -533,7 +508,6 @@ DEAL INFORMATION:
   },
 ];
 
-// ── colours ──────────────────────────────────────────────────────
 const categoryColors = {
   "Deal Sourcing":        { bg: "#0A1628", accent: "#C9A84C", light: "#1a2840" },
   "Deal Execution":       { bg: "#1a0a28", accent: "#9B6FCC", light: "#2a1a40" },
@@ -544,82 +518,137 @@ const categoryColors = {
   "Exit & Realisation":   { bg: "#1e1a0a", accent: "#CC9B4C", light: "#302a1a" },
 };
 
-// ── agentic loop — handles tool_use blocks iteratively ───────────
 async function runAgentLoop(userPrompt, onStatusUpdate) {
   const messages = [{ role: "user", content: userPrompt }];
-  const tools = [{
-    type: "web_search_20250305",
-    name: "web_search",
-  }];
-
+  const tools = [{ type: "web_search_20250305", name: "web_search" }];
   let iterations = 0;
   const MAX_ITER = 8;
 
   while (iterations < MAX_ITER) {
     iterations++;
     onStatusUpdate(`Searching… (pass ${iterations})`);
-
     const res = await fetch("/api/claude", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        tools,
-        messages,
-      }),
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, tools, messages }),
     });
-
     const data = await res.json();
     if (!data.content) throw new Error(data.error?.message || "API error");
-
-    // collect text and tool_use blocks
     const textBlocks = data.content.filter(b => b.type === "text");
     const toolBlocks = data.content.filter(b => b.type === "tool_use");
-
-    // if no tool calls → final answer
     if (toolBlocks.length === 0 || data.stop_reason === "end_turn") {
       return textBlocks.map(b => b.text).join("\n");
     }
-
-    // append assistant turn
     messages.push({ role: "assistant", content: data.content });
-
-    // build tool results
     const toolResults = toolBlocks.map(tb => ({
       type: "tool_result",
       tool_use_id: tb.id,
-      content: tb.input
-        ? `Search executed for: ${JSON.stringify(tb.input)}`
-        : "Search completed",
+      content: tb.input ? `Search executed for: ${JSON.stringify(tb.input)}` : "Search completed",
     }));
-
     messages.push({ role: "user", content: toolResults });
   }
-
-  // fallback after max iterations
   const lastRes = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages,
-    }),
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, messages }),
   });
   const lastData = await lastRes.json();
   return lastData.content?.filter(b => b.type === "text").map(b => b.text).join("\n") || "No output.";
 }
 
-// ── component ─────────────────────────────────────────────────────
+// ── File upload component ─────────────────────────────────────────
+function FileUploadZone({ onFileReady, colors }) {
+  const [dragOver, setDragOver] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const [fileError, setFileError] = useState("");
+  const inputRef = useRef(null);
+
+  const ACCEPTED = ["application/pdf", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv"];
+  const ACCEPTED_EXT = [".pdf", ".xls", ".xlsx", ".csv"];
+
+  const processFile = (file) => {
+    setFileError("");
+    const isAccepted = ACCEPTED.includes(file.type) || ACCEPTED_EXT.some(ext => file.name.toLowerCase().endsWith(ext));
+    if (!isAccepted) {
+      setFileError("Please upload a PDF or Excel file (.pdf, .xlsx, .xls, .csv)");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setFileError("File too large — maximum 20MB");
+      return;
+    }
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target.result.split(",")[1];
+      const isPDF = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      onFileReady({ base64, isPDF, name: file.name, type: file.type });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  };
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ display: "block", fontSize: 10, letterSpacing: 2, color: "#8a9aaa", textTransform: "uppercase", marginBottom: 8 }}>
+        Upload CIM File (PDF or Excel)
+      </label>
+      <div
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        style={{
+          border: `2px dashed ${dragOver ? colors.accent : fileName ? colors.accent + "88" : "#2e3a4a"}`,
+          borderRadius: 10,
+          padding: "32px 24px",
+          textAlign: "center",
+          cursor: "pointer",
+          background: dragOver ? `${colors.accent}08` : fileName ? `${colors.accent}05` : "#0a1020",
+          transition: "all 0.2s",
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf,.xlsx,.xls,.csv"
+          style={{ display: "none" }}
+          onChange={(e) => { if (e.target.files[0]) processFile(e.target.files[0]); }}
+        />
+        {fileName ? (
+          <div>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
+            <p style={{ margin: "0 0 4px", fontSize: 13, color: colors.accent, fontWeight: "bold" }}>{fileName}</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#5a6a7a" }}>Click to replace</p>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>⬆️</div>
+            <p style={{ margin: "0 0 6px", fontSize: 13, color: "#c8c0b0" }}>Drop your CIM here or click to browse</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#4a5a6a" }}>Accepts PDF, Excel (.xlsx, .xls), CSV — max 20MB</p>
+          </div>
+        )}
+      </div>
+      {fileError && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#CC4C4C" }}>{fileError}</p>}
+    </div>
+  );
+}
+
 export default function PEWorkflowLibrary() {
-  const [selected, setSelected]     = useState(null);
-  const [input, setInput]           = useState("");
-  const [output, setOutput]         = useState("");
-  const [loading, setLoading]       = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
-  const [filter, setFilter]         = useState("All");
-  const [copied, setCopied]         = useState(false);
+  const [selected, setSelected]       = useState(null);
+  const [input, setInput]             = useState("");
+  const [fileData, setFileData]       = useState(null);
+  const [output, setOutput]           = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [activeStep, setActiveStep]   = useState(0);
+  const [filter, setFilter]           = useState("All");
+  const [copied, setCopied]           = useState(false);
   const [agentStatus, setAgentStatus] = useState("");
 
   const categories = ["All", ...Array.from(new Set(workflows.map(w => w.category)))];
@@ -627,35 +656,67 @@ export default function PEWorkflowLibrary() {
   const agentWorkflows = workflows.filter(w => w.useAgent).length;
 
   const runWorkflow = async () => {
-    if (!input.trim()) return;
+    const isFileBased = selected.useFileUpload;
+    if (isFileBased && !fileData) return;
+    if (!isFileBased && !input.trim()) return;
+
     setLoading(true);
     setOutput("");
     setActiveStep(1);
     setAgentStatus("");
 
-    const finalPrompt = selected.prompt.replace("{{INPUT}}", input);
-
     try {
       let text;
-      if (selected.useAgent) {
+
+      if (isFileBased && fileData) {
+        // PDF upload path — send document to Claude
+        const messages = fileData.isPDF
+          ? [{
+              role: "user",
+              content: [
+                {
+                  type: "document",
+                  source: { type: "base64", media_type: "application/pdf", data: fileData.base64 },
+                },
+                { type: "text", text: selected.prompt },
+              ],
+            }]
+          : [{
+              role: "user",
+              content: `The user has uploaded a file named "${fileData.name}". Unfortunately Excel files cannot be read directly — please inform the user to save the file as PDF or copy/paste the key financial data as text instead.\n\n${selected.prompt}`,
+            }];
+
+        const res = await fetch("/api/claude", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, messages }),
+        });
+        const data = await res.json();
+        text = data.content?.map(b => b.text || "").join("") || "No output received.";
+
+      } else if (selected.useAgent) {
+        const finalPrompt = selected.prompt.replace("{{INPUT}}", input);
         setAgentStatus("Initialising web search agent…");
         text = await runAgentLoop(finalPrompt, (status) => setAgentStatus(status));
         setAgentStatus("Analysis complete");
+
       } else {
+        const finalPrompt = selected.prompt.replace("{{INPUT}}", input);
         const res = await fetch("/api/claude", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: "claude-sonnet-4-20250514",
-            max_tokens: 1000,
+            max_tokens: 4000,
             messages: [{ role: "user", content: finalPrompt }],
           }),
         });
         const data = await res.json();
         text = data.content?.map(b => b.text || "").join("") || "No output received.";
       }
+
       setOutput(text);
-      setActiveStep(selected.useAgent ? 3 : 2);
+      setActiveStep(2);
     } catch (e) {
       setOutput(`Error: ${e.message}`);
     }
@@ -666,6 +727,7 @@ export default function PEWorkflowLibrary() {
     setSelected(w);
     setInput(""); setOutput(""); setActiveStep(0);
     setLoading(false); setCopied(false); setAgentStatus("");
+    setFileData(null);
   };
 
   const handleCopy = () => {
@@ -675,17 +737,18 @@ export default function PEWorkflowLibrary() {
   };
 
   const colors = selected ? categoryColors[selected.category] : null;
+  const canRun = selected?.useFileUpload ? !!fileData : !!input.trim();
 
   return (
-    <div style={{ fontFamily: "'Georgia','Palatino Linotype',serif", background: "#07090f", minHeight: "100vh", color: "#e8e0d0" }}>
+    <div style={{ fontFamily: "'Georgia','Palatino Linotype',serif", background: "#07090f", minHeight: "100vh", color: "#e8e0d0", width: "100%", boxSizing: "border-box" }}>
 
       {/* ── Header ── */}
-      <div style={{ background: "linear-gradient(135deg,#07090f 0%,#0d1420 60%,#07090f 100%)", borderBottom: "1px solid #1e2a3a", padding: "28px 40px 20px", position: "relative", overflow: "hidden" }}>
+      <div style={{ background: "linear-gradient(135deg,#07090f 0%,#0d1420 60%,#07090f 100%)", borderBottom: "1px solid #1e2a3a", padding: "28px 48px 20px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(ellipse at 20% 50%,rgba(201,168,76,0.06) 0%,transparent 60%),radial-gradient(ellipse at 80% 50%,rgba(74,139,201,0.04) 0%,transparent 60%)", pointerEvents: "none" }} />
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <p style={{ margin: "0 0 4px", fontSize: 10, letterSpacing: 5, color: "#C9A84C", textTransform: "uppercase" }}>Claude · Workflow Library</p>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: "normal", color: "#f0e8d8" }}>PE Roll-Up Toolkit</h1>
+            <h1 style={{ margin: 0, fontSize: 28, fontWeight: "normal", color: "#f0e8d8" }}>PE Roll-Up Toolkit</h1>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "#7a8a9a", fontStyle: "italic" }}>Standardised AI workflows for $1M–$50M roll-up acquisitions</p>
           </div>
           <div style={{ display: "flex", gap: 20, fontSize: 11, color: "#5a6a7a" }}>
@@ -697,108 +760,123 @@ export default function PEWorkflowLibrary() {
       </div>
 
       {selected ? (
-        /* ══ RUNNER ══ */
-        <div style={{ maxWidth: 820, margin: "0 auto", padding: "28px 24px" }}>
-          <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: "#C9A84C", cursor: "pointer", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", padding: 0, marginBottom: 20, display: "flex", alignItems: "center", gap: 6 }}>← Back to Library</button>
+        /* ══ RUNNER — full width ══ */
+        <div style={{ width: "100%", maxWidth: 1100, margin: "0 auto", padding: "32px 48px", boxSizing: "border-box" }}>
+          <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: "#C9A84C", cursor: "pointer", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", padding: 0, marginBottom: 24, display: "flex", alignItems: "center", gap: 6 }}>← Back to Library</button>
 
-          {/* header card */}
-          <div style={{ background: `linear-gradient(135deg,${colors.bg} 0%,${colors.light} 100%)`, border: `1px solid ${colors.accent}33`, borderRadius: 12, padding: "24px 28px", marginBottom: 24 }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
-              <span style={{ fontSize: 28 }}>{selected.icon}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                  <p style={{ margin: 0, fontSize: 10, letterSpacing: 3, color: colors.accent, textTransform: "uppercase" }}>{selected.category}</p>
-                  {selected.useAgent && (
-                    <span style={{ fontSize: 8, background: "#0a2810", border: "1px solid #4CAF7A55", color: "#4CAF7A", borderRadius: 4, padding: "2px 7px", letterSpacing: 1 }}>
-                      ⚡ {selected.agentBadge}
-                    </span>
-                  )}
-                </div>
-                <h2 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: "normal", color: "#f0e8d8" }}>{selected.title}</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#8a9aaa", lineHeight: 1.6 }}>{selected.description}</p>
-              </div>
-              <div style={{ background: `${colors.accent}18`, border: `1px solid ${colors.accent}33`, borderRadius: 6, padding: "5px 10px", fontSize: 10, color: colors.accent, whiteSpace: "nowrap" }}>⏱ {selected.estimatedTime}</div>
-            </div>
+          {/* two-column layout: left = input, right = output */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28, alignItems: "start" }}>
 
-            {/* steps */}
-            <div style={{ display: "flex", marginTop: 20 }}>
-              {selected.steps.map((step, i) => (
-                <div key={i} style={{ flex: 1, display: "flex", alignItems: "center" }}>
+            {/* LEFT COLUMN */}
+            <div>
+              {/* header card */}
+              <div style={{ background: `linear-gradient(135deg,${colors.bg} 0%,${colors.light} 100%)`, border: `1px solid ${colors.accent}33`, borderRadius: 12, padding: "24px 28px", marginBottom: 24 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+                  <span style={{ fontSize: 28 }}>{selected.icon}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontFamily: "monospace", fontWeight: "bold", background: activeStep >= i ? colors.accent : "#1e2a3a", color: activeStep >= i ? "#07090f" : "#4a5a6a", transition: "all 0.3s", flexShrink: 0 }}>
-                        {activeStep > i ? "✓" : i + 1}
-                      </div>
-                      <span style={{ fontSize: 9, fontWeight: "bold", color: activeStep >= i ? colors.accent : "#4a5a6a", letterSpacing: 1, textTransform: "uppercase" }}>{step.label}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                      <p style={{ margin: 0, fontSize: 10, letterSpacing: 3, color: colors.accent, textTransform: "uppercase" }}>{selected.category}</p>
+                      {selected.useAgent && (
+                        <span style={{ fontSize: 8, background: "#0a2810", border: "1px solid #4CAF7A55", color: "#4CAF7A", borderRadius: 4, padding: "2px 7px", letterSpacing: 1 }}>⚡ {selected.agentBadge}</span>
+                      )}
                     </div>
-                    <p style={{ margin: "4px 0 0 27px", fontSize: 9, color: "#5a6a7a", lineHeight: 1.5 }}>{step.instruction}</p>
+                    <h2 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: "normal", color: "#f0e8d8" }}>{selected.title}</h2>
+                    <p style={{ margin: 0, fontSize: 12, color: "#8a9aaa", lineHeight: 1.6 }}>{selected.description}</p>
                   </div>
-                  {i < selected.steps.length - 1 && <div style={{ width: 16, height: 1, background: activeStep > i ? colors.accent : "#1e2a3a", margin: "0 3px -14px", flexShrink: 0 }} />}
+                  <div style={{ background: `${colors.accent}18`, border: `1px solid ${colors.accent}33`, borderRadius: 6, padding: "5px 10px", fontSize: 10, color: colors.accent, whiteSpace: "nowrap" }}>⏱ {selected.estimatedTime}</div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* agent notice */}
-          {selected.useAgent && (
-            <div style={{ background: "#0a1e10", border: "1px solid #4CAF7A44", borderRadius: 8, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>⚡</span>
-              <div>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: "bold", color: "#4CAF7A", letterSpacing: 1 }}>LIVE WEB SEARCH AGENT</p>
-                <p style={{ margin: 0, fontSize: 11, color: "#5a8a6a", lineHeight: 1.5 }}>This workflow uses an AI agent that actively searches the web in real time — pulling competitor data, recent M&A, market sizing, and news. Results are live and current. Takes 3–5 minutes. Do not close this window while it runs.</p>
+                {/* steps */}
+                <div style={{ display: "flex", marginTop: 20 }}>
+                  {selected.steps.map((step, i) => (
+                    <div key={i} style={{ flex: 1, display: "flex", alignItems: "center" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                          <div style={{ width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontFamily: "monospace", fontWeight: "bold", background: activeStep >= i ? colors.accent : "#1e2a3a", color: activeStep >= i ? "#07090f" : "#4a5a6a", transition: "all 0.3s", flexShrink: 0 }}>
+                            {activeStep > i ? "✓" : i + 1}
+                          </div>
+                          <span style={{ fontSize: 9, fontWeight: "bold", color: activeStep >= i ? colors.accent : "#4a5a6a", letterSpacing: 1, textTransform: "uppercase" }}>{step.label}</span>
+                        </div>
+                        <p style={{ margin: "4px 0 0 27px", fontSize: 9, color: "#5a6a7a", lineHeight: 1.5 }}>{step.instruction}</p>
+                      </div>
+                      {i < selected.steps.length - 1 && <div style={{ width: 16, height: 1, background: activeStep > i ? colors.accent : "#1e2a3a", margin: "0 3px -14px", flexShrink: 0 }} />}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* input */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 10, letterSpacing: 2, color: "#8a9aaa", textTransform: "uppercase", marginBottom: 8 }}>{selected.inputLabel}</label>
-            <textarea value={input} onChange={e => setInput(e.target.value)} placeholder={selected.inputPlaceholder} rows={8}
-              style={{ width: "100%", boxSizing: "border-box", background: "#0d1420", border: `1px solid ${input ? colors.accent + "66" : "#1e2a3a"}`, borderRadius: 8, padding: "14px", color: "#d0c8b8", fontSize: 12, fontFamily: "'Georgia',serif", lineHeight: 1.7, resize: "vertical", outline: "none", transition: "border-color 0.2s" }} />
-          </div>
-
-          <button onClick={runWorkflow} disabled={loading || !input.trim()}
-            style={{ background: loading || !input.trim() ? "#1e2a3a" : `linear-gradient(135deg,${colors.accent} 0%,${colors.accent}cc 100%)`, border: "none", borderRadius: 8, padding: "12px 28px", color: loading || !input.trim() ? "#3a4a5a" : "#07090f", fontSize: 12, fontWeight: "bold", letterSpacing: 1, textTransform: "uppercase", cursor: loading || !input.trim() ? "not-allowed" : "pointer", transition: "all 0.2s", marginBottom: 24 }}>
-            {loading ? (selected.useAgent ? `⚡ ${agentStatus || "Agent running…"}` : "Running…") : `Run ${selected.title} →`}
-          </button>
-
-          {/* output */}
-          {(output || loading) && (
-            <div style={{ background: "#0a1020", border: `1px solid ${colors.accent}44`, borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ background: `${colors.accent}14`, borderBottom: `1px solid ${colors.accent}33`, padding: "10px 18px", display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#f0a030" : "#4CAF7A", animation: loading ? "pulse 1s infinite" : "none" }} />
-                <span style={{ fontSize: 10, letterSpacing: 2, color: colors.accent, textTransform: "uppercase", flex: 1 }}>
-                  {loading ? (selected.useAgent ? `⚡ ${agentStatus}` : "Claude is working…") : "Output — Review before use in live processes"}
-                </span>
-              </div>
-              <div style={{ padding: "20px", maxHeight: 520, overflowY: "auto" }}>
-                {loading
-                  ? <div style={{ color: "#4a5a6a", fontSize: 12, fontStyle: "italic" }}>{selected.useAgent ? `Agent is searching the web… ${agentStatus}` : "Generating output…"}</div>
-                  : <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 12, lineHeight: 1.8, color: "#c8c0b0", fontFamily: "'Georgia',serif" }}>{output}</pre>
-                }
-              </div>
-              {output && (
-                <div style={{ padding: "10px 18px", borderTop: `1px solid ${colors.accent}22`, display: "flex", gap: 10 }}>
-                  <button onClick={handleCopy} style={{ background: copied ? "#1a3a1a" : "#1e2a3a", border: `1px solid ${copied ? "#4CAF7A" : "#2e3a4a"}`, borderRadius: 6, padding: "7px 14px", color: copied ? "#4CAF7A" : "#8a9aaa", fontSize: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", transition: "all 0.2s" }}>
-                    {copied ? "✓ Copied" : "Copy Output"}
-                  </button>
-                  <button onClick={() => { setOutput(""); setInput(""); setActiveStep(0); setAgentStatus(""); }} style={{ background: "none", border: "1px solid #2e3a4a", borderRadius: 6, padding: "7px 14px", color: "#5a6a7a", fontSize: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" }}>Reset</button>
+              {/* agent notice */}
+              {selected.useAgent && (
+                <div style={{ background: "#0a1e10", border: "1px solid #4CAF7A44", borderRadius: 8, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>⚡</span>
+                  <div>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: "bold", color: "#4CAF7A", letterSpacing: 1 }}>LIVE WEB SEARCH AGENT</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#5a8a6a", lineHeight: 1.5 }}>This workflow uses an AI agent that actively searches the web in real time. Results are live and current. Takes 3–5 minutes. Do not close this window while it runs.</p>
+                  </div>
                 </div>
               )}
+
+              {/* input area */}
+              {selected.useFileUpload ? (
+                <FileUploadZone onFileReady={setFileData} colors={colors} />
+              ) : (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: "block", fontSize: 10, letterSpacing: 2, color: "#8a9aaa", textTransform: "uppercase", marginBottom: 8 }}>{selected.inputLabel}</label>
+                  <textarea value={input} onChange={e => setInput(e.target.value)} placeholder={selected.inputPlaceholder} rows={10}
+                    style={{ width: "100%", boxSizing: "border-box", background: "#0d1420", border: `1px solid ${input ? colors.accent + "66" : "#1e2a3a"}`, borderRadius: 8, padding: "14px", color: "#d0c8b8", fontSize: 12, fontFamily: "'Georgia',serif", lineHeight: 1.7, resize: "vertical", outline: "none", transition: "border-color 0.2s" }} />
+                </div>
+              )}
+
+              <button onClick={runWorkflow} disabled={loading || !canRun}
+                style={{ background: loading || !canRun ? "#1e2a3a" : `linear-gradient(135deg,${colors.accent} 0%,${colors.accent}cc 100%)`, border: "none", borderRadius: 8, padding: "13px 32px", color: loading || !canRun ? "#3a4a5a" : "#07090f", fontSize: 12, fontWeight: "bold", letterSpacing: 1, textTransform: "uppercase", cursor: loading || !canRun ? "not-allowed" : "pointer", transition: "all 0.2s", width: "100%" }}>
+                {loading ? (selected.useAgent ? `⚡ ${agentStatus || "Agent running…"}` : "Running…") : `Run ${selected.title} →`}
+              </button>
             </div>
-          )}
+
+            {/* RIGHT COLUMN — output */}
+            <div>
+              <div style={{ background: "#0a1020", border: `1px solid ${colors.accent}44`, borderRadius: 12, overflow: "hidden", minHeight: 400 }}>
+                <div style={{ background: `${colors.accent}14`, borderBottom: `1px solid ${colors.accent}33`, padding: "10px 18px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#f0a030" : output ? "#4CAF7A" : "#2a3a4a", animation: loading ? "pulse 1s infinite" : "none" }} />
+                  <span style={{ fontSize: 10, letterSpacing: 2, color: colors.accent, textTransform: "uppercase", flex: 1 }}>
+                    {loading ? (selected.useAgent ? `⚡ ${agentStatus}` : "Claude is working…") : output ? "Output — Review before use in live processes" : "Output will appear here"}
+                  </span>
+                </div>
+                <div style={{ padding: "20px", maxHeight: 640, overflowY: "auto" }}>
+                  {loading
+                    ? <div style={{ color: "#4a5a6a", fontSize: 12, fontStyle: "italic" }}>{selected.useAgent ? `Agent is searching the web… ${agentStatus}` : "Generating output…"}</div>
+                    : output
+                      ? <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 12, lineHeight: 1.8, color: "#c8c0b0", fontFamily: "'Georgia',serif" }}>{output}</pre>
+                      : <div style={{ color: "#2a3a4a", fontSize: 12, fontStyle: "italic", paddingTop: 40, textAlign: "center" }}>
+                          <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.3 }}>{selected.icon}</div>
+                          <p style={{ margin: 0 }}>{selected.useFileUpload ? "Upload a CIM file and click Run to generate your summary" : "Fill in the input and click Run to generate output"}</p>
+                        </div>
+                  }
+                </div>
+                {output && (
+                  <div style={{ padding: "10px 18px", borderTop: `1px solid ${colors.accent}22`, display: "flex", gap: 10 }}>
+                    <button onClick={handleCopy} style={{ background: copied ? "#1a3a1a" : "#1e2a3a", border: `1px solid ${copied ? "#4CAF7A" : "#2e3a4a"}`, borderRadius: 6, padding: "7px 14px", color: copied ? "#4CAF7A" : "#8a9aaa", fontSize: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", transition: "all 0.2s" }}>
+                      {copied ? "✓ Copied" : "Copy Output"}
+                    </button>
+                    <button onClick={() => { setOutput(""); setInput(""); setActiveStep(0); setAgentStatus(""); setFileData(null); }} style={{ background: "none", border: "1px solid #2e3a4a", borderRadius: 6, padding: "7px 14px", color: "#5a6a7a", fontSize: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" }}>Reset</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
         </div>
 
       ) : (
-        /* ══ GRID ══ */
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 24px" }}>
+        /* ══ GRID — full width ══ */
+        <div style={{ width: "100%", padding: "28px 48px", boxSizing: "border-box" }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 28, flexWrap: "wrap" }}>
             {categories.map(cat => (
               <button key={cat} onClick={() => setFilter(cat)} style={{ background: filter === cat ? "#C9A84C" : "#0d1420", border: `1px solid ${filter === cat ? "#C9A84C" : "#1e2a3a"}`, borderRadius: 20, padding: "6px 14px", color: filter === cat ? "#07090f" : "#6a7a8a", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>{cat}</button>
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(290px,1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: 16 }}>
             {filtered.map(w => {
               const c = categoryColors[w.category];
               return (
@@ -812,6 +890,7 @@ export default function PEWorkflowLibrary() {
                     <span style={{ fontSize: 22 }}>{w.icon}</span>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       {w.useAgent && <span style={{ fontSize: 8, background: "#0a2810", border: "1px solid #4CAF7A55", color: "#4CAF7A", borderRadius: 4, padding: "2px 6px", letterSpacing: 0.5 }}>⚡ LIVE</span>}
+                      {w.useFileUpload && <span style={{ fontSize: 8, background: "#0a1828", border: "1px solid #4C9BCC55", color: "#4C9BCC", borderRadius: 4, padding: "2px 6px", letterSpacing: 0.5 }}>📎 PDF</span>}
                       <span style={{ fontSize: 9, color: c.accent, background: `${c.accent}18`, border: `1px solid ${c.accent}33`, borderRadius: 4, padding: "3px 7px", letterSpacing: 0.5 }}>{w.estimatedTime}</span>
                     </div>
                   </div>
@@ -832,7 +911,13 @@ export default function PEWorkflowLibrary() {
         </div>
       )}
 
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#07090f}::-webkit-scrollbar-thumb{background:#1e2a3a;border-radius:3px}`}</style>
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+        ::-webkit-scrollbar{width:5px}
+        ::-webkit-scrollbar-track{background:#07090f}
+        ::-webkit-scrollbar-thumb{background:#1e2a3a;border-radius:3px}
+        html, body, #root { width: 100%; margin: 0; padding: 0; }
+      `}</style>
     </div>
   );
 }
